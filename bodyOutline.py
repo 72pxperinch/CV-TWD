@@ -5,11 +5,15 @@ mp_drawing = mp.solutions.drawing_utils
 
 # MediaPipe Pose solution setup
 mp_pose = mp.solutions.pose
+mp_hands = mp.solutions.hands
+mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 cap = cv2.VideoCapture(0)
 
 POSE_CONNECTIONS = mp_pose.POSE_CONNECTIONS
+HAND_CONNECTIONS = mp_hands.HAND_CONNECTIONS
 
 # Cubic Bezier function
 def bezier_curve(p0, p1, p2, p3, num_points=100):
@@ -30,6 +34,7 @@ while True:
     
     # Process the frame with MediaPipe Pose
     results = pose.process(frame_rgb)
+    hand_results = hands.process(frame_rgb)
     
     # Convert the frame back to BGR for OpenCV
     frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
@@ -77,6 +82,12 @@ while True:
                 # Draw a circle at the landmark's position (radius of 5 pixels, green color)
                 cv2.circle(frame_bgr, (x, y), 20, (0, 255, 0), -1)  # -1 means filled circle
     
+    # Draw hand landmarks
+    if hand_results.multi_hand_landmarks:
+        for hand_landmarks in hand_results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame_bgr, hand_landmarks, HAND_CONNECTIONS, 
+                                      mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=4),
+                                      mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2))
     
     # Flip the frame horizontally
     flipped_frame = cv2.flip(frame_bgr, 1)
@@ -91,3 +102,5 @@ while True:
 # Release the webcam and close all OpenCV windows
 cap.release()
 cv2.destroyAllWindows()
+
+
