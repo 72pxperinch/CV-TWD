@@ -7,24 +7,23 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands()
 mp_drawing = mp.solutions.drawing_utils
 
-# Function to calculate 4 common tangents between two circles
-def calculate_tangents(circle1, circle2):
+def calculate_tangents(circle1, circle2, base_angle):
     x1, y1, r1 = circle1
     x2, y2, r2 = circle2
 
+    # Distance between centers
     dist = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    print(r1, r2)
 
-    if dist < abs(r1 - r2) or dist < r1 + r2:
-        return []
-
-    angle = np.arctan2(y2 - y1, x2 - x1)
-
-    external_tangents = []
+    tangents = []
     for sign in [-1, 1]:
-        print(np.arcsin((r1 - r2) / dist))
-        angle1 = angle + sign * np.arcsin((r1 - r2) / dist)
-        external_tangents.append((np.cos(angle1), np.sin(angle1)))
+        # Adjust angle for tangent
+        tangent_angle = base_angle + -1 * sign * np.pi/2 + sign * np.arcsin(abs(r1 - r2) / dist)
+
+        # Store tangent directions as unit vectors
+        tangents.append((np.cos(tangent_angle), np.sin(tangent_angle)))
+
+    return tangents
+
         
     # internal_tangents = []
     # for sign in [-1, 1]:
@@ -33,8 +32,8 @@ def calculate_tangents(circle1, circle2):
 
 
     # tangents = external_tangents + internal_tangents
-    tangents = external_tangents
-    return tangents
+    # tangents = external_tangents
+    # return tangents
 
 
 
@@ -76,7 +75,7 @@ while cap.isOpened():
 
     # Flip the frame horizontally for better user experience
     frame = cv2.flip(frame, 1)
-
+    canvas = np.zeros_like(frame)
     # Convert the frame to RGB for MediaPipe
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -85,7 +84,13 @@ while cap.isOpened():
 
     # Draw landmarks and tangents if hand landmarks are detected
     if result.multi_hand_landmarks:
-        for hand_landmarks in result.multi_hand_landmarks:
+        for hand_idx , hand_landmarks in enumerate(result.multi_hand_landmarks):
+            hand_type = result.multi_handedness[hand_idx].classification[0].label
+            if hand_type == "Right":
+                line_color = (255, 0, 0)
+            else :
+                line_color = (0, 255, 0)
+
             # Get the screen coordinates for index MCP and middle finger MCP
             idx_mcp = hand_landmarks.landmark[5]
             mid_mcp = hand_landmarks.landmark[9]
@@ -98,11 +103,6 @@ while cap.isOpened():
             constant_value = max(min_radius, int(distance / 2))  # Ensure a minimum value of 1
             landmark_radius = generate_landmark_radius(constant_value)
 
-            # Draw circles at each landmark with customized radius
-            for idx, landmark in enumerate(hand_landmarks.landmark):
-                x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
-                radius = max(min_radius, landmark_radius.get(idx, min_radius))  # Ensure radius is at least 1
-                cv2.circle(frame, (x, y), radius, (255, 0, 0), 2)  # Draw circle
 
             # Draw tangents between connections
             for connection in mp_hands.HAND_CONNECTIONS:
@@ -112,23 +112,39 @@ while cap.isOpened():
 
                 x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
                 x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
-
+                base_angle = np.arctan2(y2 - y1, x2 - x1)
+                
+                if end_idx in {6, 10, 14, 18, 4, 8, 12, 16, 20}:
+                    cv2.ellipse(canvas, (x2,y2), (landmark_radius.get(end_idx, min_radius),landmark_radius.get(end_idx, min_radius)), base_angle*180/np.pi, -90, 90, line_color, 2)
                 # Calculate tangents for the two circles
-                tangent_points = calculate_tangents((x1, y1, landmark_radius.get(start_idx, min_radius)), (x2, y2, landmark_radius.get(end_idx, min_radius)))
-                print(tangent_points)
+                tangent_points = calculate_tangents((x1, y1, landmark_radius.get(start_idx, min_radius)), (x2, y2, landmark_radius.get(end_idx, min_radius)), base_angle)
+                # print(tangent_points)
                 # Draw tangent lines
                 for t in tangent_points:
                     # Extend the line a bit to simulate tangent
-                    line_x1 = int(x1 + t[0] * landmark_radius.get(start_idx, min_radius))
-                    line_y1 = int(y1 + t[1] * landmark_radius.get(start_idx, min_radius))
-                    line_x2 = int(x2 + t[0] * landmark_radius.get(end_idx, min_radius))
-                    line_y2 = int(y2 + t[1] * landmark_radius.get(end_idx, min_radius))
+                    try:
+                        line_x1 = int(x1 + t[0] * landmark_radius.get(start_idx, min_radius))
+                        line_y1 = int(y1 + t[1] * landmark_radius.get(start_idx, min_radius))
+                        line_x2 = int(x2 + t[0] * landmark_radius.get(end_idx, min_radius))
+                        line_y2 = int(y2 + t[1] * landmark_radius.get(end_idx, min_radius))
+                    except (ValueError, TypeError) as e:
+                        
+                        line_x1 = int(x1)
+                        line_y1 = int(y1)
+                        line_x2 = int(x2)
+                        line_y2 = int(y2)
                     # print( start_idx,  end_idx,   x1,y1,  line_x1,line_y1,   x2,y2,  line_x2,line_y2, t[0],t[1])
-                    cv2.line(frame, (line_x1, line_y1), (line_x2, line_y2), (0, 255, 0), 2)
-                    cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    cv2.line(canvas, (line_x1, line_y1), (line_x2, line_y2), line_color, 2)
+                    # cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    # print(constant_value, landmark_radius.get(start_idx, min_radius) )
+
+                    
+                
+                
+                    
 
     # Show the frame with hand landmarks and tangents
-    cv2.imshow("Hand Pose", frame)
+    cv2.imshow("Hand Pose", canvas)
 
     # Exit when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
