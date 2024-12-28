@@ -13,6 +13,7 @@ def calculate_tangents(circle1, circle2):
     x2, y2, r2 = circle2
 
     dist = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    print(r1, r2)
 
     if dist < abs(r1 - r2) or dist < r1 + r2:
         return []
@@ -21,6 +22,7 @@ def calculate_tangents(circle1, circle2):
 
     external_tangents = []
     for sign in [-1, 1]:
+        print(np.arcsin((r1 - r2) / dist))
         angle1 = angle + sign * np.arcsin((r1 - r2) / dist)
         external_tangents.append((np.cos(angle1), np.sin(angle1)))
         
@@ -112,7 +114,8 @@ while cap.isOpened():
                 x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
 
                 # Calculate tangents for the two circles
-                tangent_points = calculate_tangents((x1, y1, radius), (x2, y2, radius))
+                tangent_points = calculate_tangents((x1, y1, landmark_radius.get(start_idx, min_radius)), (x2, y2, landmark_radius.get(end_idx, min_radius)))
+                print(tangent_points)
                 # Draw tangent lines
                 for t in tangent_points:
                     # Extend the line a bit to simulate tangent
@@ -120,8 +123,9 @@ while cap.isOpened():
                     line_y1 = int(y1 + t[1] * landmark_radius.get(start_idx, min_radius))
                     line_x2 = int(x2 + t[0] * landmark_radius.get(end_idx, min_radius))
                     line_y2 = int(y2 + t[1] * landmark_radius.get(end_idx, min_radius))
-                    # print(x1,y1,line_x1,line_y1,x2,y2,line_x2,line_y2)
-                    cv2.line(frame, (line_x1, line_y1), (line_x2, line_y2), (255, 0, 0), 2)
+                    # print( start_idx,  end_idx,   x1,y1,  line_x1,line_y1,   x2,y2,  line_x2,line_y2, t[0],t[1])
+                    cv2.line(frame, (line_x1, line_y1), (line_x2, line_y2), (0, 255, 0), 2)
+                    cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
     # Show the frame with hand landmarks and tangents
     cv2.imshow("Hand Pose", frame)
