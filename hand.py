@@ -114,8 +114,10 @@ while cap.isOpened():
                 x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
                 base_angle = np.arctan2(y2 - y1, x2 - x1)
                 
-                if end_idx in {6, 10, 14, 18, 4, 8, 12, 16, 20}:
-                    cv2.ellipse(canvas, (x2,y2), (landmark_radius.get(end_idx, min_radius),landmark_radius.get(end_idx, min_radius)), base_angle*180/np.pi, -90, 90, line_color, 2)
+                if end_idx in { 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16, 18, 19, 20}:
+                    # cv2.ellipse(canvas, (x2,y2), (landmark_radius.get(end_idx, min_radius),landmark_radius.get(end_idx, min_radius)), base_angle*180/np.pi, -90, 90, line_color, 2)
+                    cv2.ellipse(frame, (x2,y2), (landmark_radius.get(end_idx, min_radius),landmark_radius.get(end_idx, min_radius)), base_angle*180/np.pi, -90, 90, line_color, 2)
+                
                 # Calculate tangents for the two circles
                 tangent_points = calculate_tangents((x1, y1, landmark_radius.get(start_idx, min_radius)), (x2, y2, landmark_radius.get(end_idx, min_radius)), base_angle)
                 # print(tangent_points)
@@ -134,7 +136,8 @@ while cap.isOpened():
                         line_x2 = int(x2)
                         line_y2 = int(y2)
                     # print( start_idx,  end_idx,   x1,y1,  line_x1,line_y1,   x2,y2,  line_x2,line_y2, t[0],t[1])
-                    cv2.line(canvas, (line_x1, line_y1), (line_x2, line_y2), line_color, 2)
+                    # cv2.line(canvas, (line_x1, line_y1), (line_x2, line_y2), line_color, 2)
+                    cv2.line(frame, (line_x1, line_y1), (line_x2, line_y2), line_color, 2)
                     # cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                     # print(constant_value, landmark_radius.get(start_idx, min_radius) )
 
@@ -144,7 +147,8 @@ while cap.isOpened():
                     
 
     # Show the frame with hand landmarks and tangents
-    cv2.imshow("Hand Pose", canvas)
+    cv2.imshow("Hand Pose", frame)
+    # cv2.imshow("Hand Pose", canvas)
 
     # Exit when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
